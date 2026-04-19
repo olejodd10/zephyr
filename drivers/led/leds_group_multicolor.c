@@ -20,6 +20,7 @@ LOG_MODULE_REGISTER(leds_group_multicolor, CONFIG_LED_LOG_LEVEL);
 
 struct leds_group_multicolor_config {
 	uint8_t num_leds;
+	const struct led_info led_info;
 	const struct led_dt_spec *led;
 };
 
@@ -39,6 +40,20 @@ static int leds_group_multicolor_off(const struct device *dev, uint32_t led)
 			return err;
 		}
 	}
+
+	return 0;
+}
+
+static int leds_group_multicolor_get_info(const struct device *dev, uint32_t led,
+					  const struct led_info **info)
+{
+	const struct leds_group_multicolor_config *config = dev->config;
+
+	if (led != 0) {
+		return -EINVAL;
+	}
+
+	*info = &config->led_info;
 
 	return 0;
 }
@@ -85,16 +100,28 @@ static int leds_group_multicolor_init(const struct device *dev)
 
 static DEVICE_API(led, leds_group_multicolor_api) = {
 	.off = leds_group_multicolor_off,
+	.get_info = leds_group_multicolor_get_info,
 	.set_color = leds_group_multicolor_set_color,
 };
 
 #define LED_DT_SPEC_GET_BY_PHANDLE_IDX(node_id, prop, idx)			\
 	LED_DT_SPEC_GET(DT_PHANDLE_BY_IDX(node_id, prop, idx))
 
+#define LED_INFO(inst)								\
+	{									\
+		.label = DT_INST_PROP_OR(inst, label, NULL),			\
+		.index = 0,						        \
+		.num_colors = ARRAY_SIZE(color_mapping_##inst),	                \
+		.color_mapping = color_mapping_##inst,			        \
+	}
+
 #define LEDS_GROUP_MULTICOLOR_DEVICE(inst)					\
 										\
 	BUILD_ASSERT(DT_INST_PROP_LEN(inst, leds) > 0,				\
 			"at least one LED phandle must be present");		\
+			                                                        \
+	static const uint8_t color_mapping_##inst[] =                           \
+		DT_INST_PROP(inst, color_mapping);                              \
 										\
 	static const struct led_dt_spec led_group_multicolor_##inst[] = {	\
 		DT_INST_FOREACH_PROP_ELEM_SEP(					\
@@ -104,6 +131,7 @@ static DEVICE_API(led, leds_group_multicolor_api) = {
 	static const struct leds_group_multicolor_config			\
 				leds_group_multicolor_config_##inst = {		\
 		.num_leds	= ARRAY_SIZE(led_group_multicolor_##inst),	\
+		.led_info	= LED_INFO(inst),				\
 		.led		= led_group_multicolor_##inst,			\
 	};									\
 										\
