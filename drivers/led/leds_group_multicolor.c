@@ -86,6 +86,10 @@ static DEVICE_API(led, leds_group_multicolor_api) = {
 #define LED_DT_SPEC_GET_BY_PHANDLE_IDX(node_id, prop, idx)			\
 	LED_DT_SPEC_GET(DT_PHANDLE_BY_IDX(node_id, prop, idx))
 
+#define LED_HAS_INFO(inst)							\
+	UTIL_OR(DT_INST_NODE_HAS_PROP(inst, label),				\
+		DT_INST_NODE_HAS_PROP(inst, color_mapping))
+
 #define LED_INFO(inst)								\
 	{									\
 		.label = DT_INST_PROP_OR(inst, label, NULL),			\
@@ -114,7 +118,8 @@ static DEVICE_API(led, leds_group_multicolor_api) = {
 				leds_group_multicolor_config_##inst = {		\
 		.num_leds	= ARRAY_SIZE(led_group_multicolor_##inst),	\
 		.led		= led_group_multicolor_##inst,			\
-		.led_info	= LED_INFO(inst),				\
+		IF_ENABLED(LED_HAS_INFO(inst),					\
+			(.led_info = LED_INFO(inst),))				\
 	};									\
 										\
 	DEVICE_DT_INST_DEFINE(inst, &leds_group_multicolor_init, NULL,		\
